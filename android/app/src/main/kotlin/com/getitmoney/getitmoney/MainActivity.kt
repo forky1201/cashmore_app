@@ -1,0 +1,6 @@
+package com.getit.getitmoney
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity: FlutterActivity() {
+}

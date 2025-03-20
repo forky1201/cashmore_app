@@ -1,0 +1,12 @@
+Trying to add new property 'svn:ignore'
+but the property already exists.
+<<<<<<< (local property value)
+*.dart_tool
+*.idea
+*.vscode
+.dart_tool
+build
+||||||| (incoming 'changed from' value)
+=======
+.dart_tool
+>>>>>>> (incoming 'changed to' value)

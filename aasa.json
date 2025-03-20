@@ -1,0 +1,18 @@
+{
+    "applinks": {
+        "apps": [],
+        "details": [
+            {
+                "appID": "TX9RZ5JA9Z.com.getit.getitmoney",
+                "paths": [
+                    "/*"
+                ]
+            }
+        ]
+    },
+    "webcredentials": {
+        "apps": [
+            "TX9RZ5JA9Z.com.getit.getitmoney"
+        ]
+    }
+}
