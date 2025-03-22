@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:cashmore_app/app/module/common/controller/auth_controller.dart';
-import 'package:cashmore_app/app/module/home/controller/home_controller.dart';
 import 'package:cashmore_app/app/module/intro/controller/session_controller.dart';
 import 'package:cashmore_app/pages.dart';
 import 'package:cashmore_app/service/app_prefs.dart';
@@ -23,7 +22,7 @@ Future<void> main() async {
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   await initializeApp();
-  await requestPermissions(); // 권한 요청
+  requestPermissions(); // 권한 요청
 
   if (Platform.isAndroid) {
     // Foreground Task 초기화 (필수)

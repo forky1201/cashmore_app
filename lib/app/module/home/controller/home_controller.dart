@@ -2,15 +2,13 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:cashmore_app/AppLifecycleObserver.dart';
 import 'package:cashmore_app/app/module/main/controller/main_controller.dart';
+import 'package:cashmore_app/app/module/service/health_Observer_service.dart';
 import 'package:cashmore_app/app/module/service/step_foreground_service.dart';
 import 'package:cashmore_app/common/base_controller.dart';
-import 'package:cashmore_app/common/model/common_model.dart';
 import 'package:cashmore_app/common/model/recommender_model.dart';
 import 'package:cashmore_app/common/model/totalPoint_model.dart';
 import 'package:cashmore_app/common/model/user_model.dart';
-import 'package:cashmore_app/repository/PreferencesDatabase.dart';
 import 'package:cashmore_app/repository/StepDatabase.dart';
 import 'package:cashmore_app/repository/auth_repsitory.dart';
 import 'package:cashmore_app/repository/home_repsitory.dart';
@@ -19,15 +17,13 @@ import 'package:cashmore_app/service/app_service.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
 import 'package:health/health.dart';
-import 'package:intl/intl.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart'; // pedometer 패키지 사용
+// pedometer 패키지 사용
 
 /// ── HomeController ───────────────────────────────────────────────────────────────
 class HomeController extends BaseController {
@@ -93,27 +89,38 @@ class HomeController extends BaseController {
   @override
   Future<void> onInit() async {
     super.onInit();
+    userInfo();
 
     await requestPermissions();
 
     if (Platform.isAndroid) {
       await loadSavedStepCount();
-     
+
       startForegroundService();
       scheduleMidnightReset();
       startStepTracking();
       await loadStepCountSetting(); // ✅ 앱 시작 시 걸음 수 설정 불러오기
-        // Foreground Service 실행 여부 확인 후 시작
+      // Foreground Service 실행 여부 확인 후 시작
       if (isStepCountEnabled.value) {
         await StepForegroundServiceManager.startForegroundService();
       }
     } else {
       requestHealthPermissions();
-      await startIOSStepUpdatesOne();
-      startIOSStepUpdates(); // 🔹 iOS 걸음수 업데이트 타이머 시작
+      // 초기 걸음수 불러오기 (앱 시작 시)
+      await HealthObserverService.initStepFromHealth((steps) {
+        stepCount.value = steps;
+      });
+
+      // observer query 수신
+      HealthObserverService.startObserver();
+      HealthObserverService.listenToUpdates((steps) {
+        stepCount.value = steps;
+      });
+
+
     }
 
-    userInfo();
+    
     totalPoint();
     pointAdd();
     friend();
@@ -205,64 +212,11 @@ class HomeController extends BaseController {
 
     if (!authorized) {
       print("🚨 Apple Health 권한 요청 실패");
+      pedometerStatus.value = '걸음수 대기 중';
     } else {
       print("✅ Apple Health 권한 요청 성공");
+      pedometerStatus.value = '걸음수 측정 중';
     }
-  }
-
-  /// 📌 iOS 실시간 걸음 수 가져오기 (아이폰 걸음 수만)
-  void startIOSStepUpdates() {
-    _iosStepUpdateTimer = Timer.periodic(Duration(seconds: 3), (timer) async {
-      try {
-        DateTime now = DateTime.now();
-        DateTime start = DateTime(now.year, now.month, now.day); // 🔹 오늘 00:00
-
-        // 🔹 걸음 수 데이터 가져오기
-        List<HealthDataPoint> data = await health.getHealthDataFromTypes(
-          startTime: start,
-          endTime: now,
-          types: [HealthDataType.STEPS],
-        );
-
-        // 🔹 "iPhone"에서 기록된 걸음 수만 필터링
-        int totalSteps = data.fold(0, (sum, item) {
-          if (item.value is NumericHealthValue && item.sourceName.contains("iPhone")) {
-            return sum + (item.value as NumericHealthValue).numericValue.toInt();
-          }
-          return sum;
-        });
-
-        stepCount.value = totalSteps; // 🔹 저장 필요 없음
-
-        print("✅ 실시간 걸음 수 업데이트 (iOS - iPhone만): ${stepCount.value}");
-      } catch (e) {
-        print("🚨 Apple Health 걸음 수 가져오기 실패: $e");
-      }
-    });
-  }
-
-  Future<void> startIOSStepUpdatesOne() async {
-    DateTime now = DateTime.now();
-    DateTime start = DateTime(now.year, now.month, now.day); // 🔹 오늘 00:00
-
-    // 🔹 걸음 수 데이터 가져오기
-    List<HealthDataPoint> data = await health.getHealthDataFromTypes(
-      startTime: start,
-      endTime: now,
-      types: [HealthDataType.STEPS],
-    );
-
-    // 🔹 "iPhone"에서 기록된 걸음 수만 필터링
-    int totalSteps = data.fold(0, (sum, item) {
-      if (item.value is NumericHealthValue && item.sourceName.contains("iPhone")) {
-        return sum + (item.value as NumericHealthValue).numericValue.toInt();
-      }
-      return sum;
-    });
-
-    stepCount.value = totalSteps; // 🔹 저장 필요 없음
-
-    print("✅ 실시간 걸음 수 업데이트 (iOS - iPhone만): ${stepCount.value}");
   }
 
   //안드로이드용
@@ -353,7 +307,6 @@ class HomeController extends BaseController {
     print("✅ 자정 리셋 예약됨: ${midnight}");
   }
 
-
   void startForegroundService() async {
     //await Permission.activityRecognition.request();
     //await Permission.ignoreBatteryOptimizations.request();
@@ -376,8 +329,6 @@ class HomeController extends BaseController {
       }
     });
   }
-
-
 
   void stopForegroundService() async {
     bool isRunning = await FlutterForegroundTask.isRunningService;

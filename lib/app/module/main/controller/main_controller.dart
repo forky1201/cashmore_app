@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:cashmore_app/app/module/home/controller/home_controller.dart';
 import 'package:cashmore_app/app/module/mission/controller/mission_controller.dart';
+import 'package:cashmore_app/app/module/mypage/controller/health_controller.dart';
 import 'package:cashmore_app/app/module/mypage/controller/mypage_controller.dart';
 import 'package:cashmore_app/app/module/point/controller/point_controller.dart';
 import 'package:cashmore_app/app/module/store/controller/store_controller.dart';
@@ -49,12 +52,19 @@ class MainController extends BaseController {
       final pointController = Get.find<PointController>();
       pointController.userInfo();
       pointController.refreshPayments();
+    } else if (index == 4) {
+      if (Platform.isIOS) {
+        final healthController = Get.find<HealthController>();
+        await healthController.fetchTodayHealthData();
+        await healthController.fetchMonthHealthData();
+        await healthController.fetchTotalHealthData();
+      }
+     
     } else if (index == 0) {
       //final myPageController = Get.find<MyPageController>();
       await homeController.userInfo();
       await homeController.totalPoint(); // 애니메이션 트리거
       homeController.startTotalPointUpdate();
-
     }
   }
 
@@ -284,7 +294,7 @@ class MainController extends BaseController {
     );
   }
 
-   Future<void> showInquiryPopup(BuildContext context) async {
+  Future<void> showInquiryPopup(BuildContext context) async {
     String selectedCategory = "광고"; // 기본 선택 값
     final TextEditingController titleController = TextEditingController();
     final TextEditingController contentController = TextEditingController();
@@ -388,7 +398,7 @@ class MainController extends BaseController {
                           padding: const EdgeInsets.symmetric(vertical: 12.0),
                         ),
                         onPressed: () {
-                          final myPageController =  Get.find<MyPageController>();
+                          final myPageController = Get.find<MyPageController>();
                           final inquiry = {
                             "category": selectedCategory,
                             "title": titleController.text,
