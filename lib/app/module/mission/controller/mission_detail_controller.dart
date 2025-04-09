@@ -504,7 +504,7 @@ print("sharedUri: $sharedUri");
             function applyRedBorder() {
               const saveButtons = document.querySelectorAll(".D_Xqt");
               if (saveButtons.length > 1) {
-                const secondSaveButton = saveButtons[1];
+                const secondSaveButton = saveButtons[2];
                 secondSaveButton.style.border = "2px solid red";
                 secondSaveButton.style.padding = "4px";
               }
