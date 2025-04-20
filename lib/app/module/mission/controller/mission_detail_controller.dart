@@ -459,8 +459,15 @@ print("sharedUri: $sharedUri");
     switch (result) {
       case NAVER_PALCE_ARAR:
         return buildWebViewNotice(url);
-      case NAVER_PALCE_SAVE:
-        return buildWebViewSave(url);
+      case NAVER_PALCE_SAVE:{
+        if(url.contains('/place/')){
+          return buildWebViewSave(url);
+        }else{
+          return buildWebViewSave2(url);
+        }
+        
+      }
+        
       case NAVER_PALCE_KEEP:
         return buildWebViewKeep(url);
       case NAVER_PALCE_BLOG:
@@ -496,6 +503,48 @@ print("sharedUri: $sharedUri");
 
   // 웹뷰 저장하기
   Widget buildWebViewSave(String url) {
+    return InAppWebView(
+      initialUrlRequest: URLRequest(url: WebUri(url)),
+      onLoadStop: (webController, webUrl) async {
+        await webController.evaluateJavascript(source: '''
+          (function() {
+            function applyRedBorder() {
+              const saveButtons = document.querySelectorAll(".D_Xqt");
+              if (saveButtons.length > 1) {
+                const secondSaveButton = saveButtons[1];
+                secondSaveButton.style.border = "2px solid red";
+                secondSaveButton.style.padding = "4px";
+              }
+              const actionButton = document.querySelector(".swt-save-btn");
+              if (actionButton) {
+                actionButton.onclick = function() {
+                  window.flutter_inappwebview.callHandler('onSaveButtonClicked');
+                };
+              }
+            }
+            const observer = new MutationObserver((mutations) => {
+              mutations.forEach((mutation) => {
+                applyRedBorder();
+              });
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+            applyRedBorder();
+          })();
+        ''');
+        loadingProgress.value = 1.0;
+      },
+      onWebViewCreated: (webController) {
+        webController.addJavaScriptHandler(
+          handlerName: 'onSaveButtonClicked',
+          callback: (args) {
+            missionEnd(missionNumber.value);
+          },
+        );
+      },
+    );
+  }
+
+  Widget buildWebViewSave2(String url) {
     return InAppWebView(
       initialUrlRequest: URLRequest(url: WebUri(url)),
       onLoadStop: (webController, webUrl) async {
